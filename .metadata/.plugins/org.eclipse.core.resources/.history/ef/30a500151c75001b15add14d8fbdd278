@@ -1,0 +1,90 @@
+package com.supportportal.Security.configuration;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import com.supportportal.Security.constant.SecurityConstant;
+import com.supportportal.Security.filter.JwtAccessDeniedHandler;
+import com.supportportal.Security.filter.JwtAuthenticationEntryPoint;
+import com.supportportal.Security.filter.JwtAuthorizationFilter;
+
+@Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
+public class SecurityConfiguration extends WebSecurityConfigurerAdapter{
+	
+	private JwtAuthorizationFilter jwtAuthorizationFilter;	
+	private JwtAccessDeniedHandler jwtAccessDeniedHandler;	
+	private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;	
+	private UserDetailsService userDetailsService;	
+	private BCryptPasswordEncoder bCryptPasswordEncoder;
+	
+	@Autowired
+	public SecurityConfiguration(JwtAuthorizationFilter jwtAuthorizationFilter,
+			JwtAccessDeniedHandler jwtAccessDeniedHandler, 
+			JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
+			@Qualifier("userDetailsService") UserDetailsService userDetailsService, 
+	/*essendo UserDetailsService un'interfaccia prefabbricata di Spring Security,
+	 * aggiungiamo il Qualifier per dire al programma di usare la nostra implementazione
+	 */
+			BCryptPasswordEncoder bCryptPasswordEncoder) {
+		this.jwtAuthorizationFilter = jwtAuthorizationFilter;
+		this.jwtAccessDeniedHandler = jwtAccessDeniedHandler;
+		this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
+		this.userDetailsService = userDetailsService;
+		this.bCryptPasswordEncoder = bCryptPasswordEncoder;
+	}
+
+	@Override
+	protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+		auth.userDetailsService(userDetailsService).passwordEncoder(bCryptPasswordEncoder);
+	}
+
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
+		http.csrf().disable().cors()
+	/* CSRF Cross Site Request Forgery, è una vulnerabilità a cui sono esposti i siti 
+	 * web dinamici quando sono progettati per ricevere richieste da un client 
+	 * senza meccanismi per controllare se la richiesta sia stata inviata intenzionalmente oppure no.
+	 * 
+	 * CORS Cross-origin resource sharing
+	 * */	
+			.and()
+			.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+			/*Usiamo Stateless perchè abbiamo usato il JWT quindi applicare una Statefull sarebbe superfluo */
+			.and()
+			.authorizeRequests().antMatchers(SecurityConstant.PUBLIC_URLS).permitAll() 
+			.anyRequest().authenticated()
+			/* le ultime due righe significano:
+			 * la prima che tutti possono accedere agli endpoints descritti nel vettore PUBLIC_URLS;
+			 * la seconda che azioni su quelle pagine avvengano sempre a patto di un'autenticazione
+			 */
+			.and()
+			.exceptionHandling().accessDeniedHandler(jwtAccessDeniedHandler)
+			.authenticationEntryPoint(jwtAuthenticationEntryPoint)
+			.and()
+			.addFilterBefore(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
+	}
+	
+	@Bean
+	@Override
+	public AuthenticationManager authenticationManagerBean() throws Exception{
+		return super.authenticationManagerBean();
+	}
+
+	
+	
+	
+}

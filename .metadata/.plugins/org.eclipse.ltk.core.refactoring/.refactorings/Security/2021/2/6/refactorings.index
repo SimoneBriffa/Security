@@ -1,0 +1,7 @@
+1612884940463	Delete element
+1612885154453	Rename type 'UserService'
+1612953209787	Rename package 'com.supportportal.Security.exception'
+1612973387746	Extract constant 'EMAIL_ALREADY_EXISTS'
+1612973423580	Extract constant 'USERNAME_ALREADY_EXISTS'
+1613038240778	Extract constant 'NO_USER_FOUND_BY_USERNAME'
+1613038255262	Extract constant 'NO_USER_FOUND_BY_USERNAME2'
